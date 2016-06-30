@@ -1,0 +1,6 @@
+{
+  "require": {
+    "punic/punic": "1.*",
+    "wp-cli/php-cli-tools": "^0.11.1"
+  }
+}
