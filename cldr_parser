@@ -5,6 +5,7 @@ use \cli\Table;
 
 include 'vendor/autoload.php';
 
+
 /**
  * Calculates the total speakers for all languages in CLDR sorted by
  * number of speakers
@@ -14,62 +15,69 @@ include 'vendor/autoload.php';
  * @throws Exception If errors occur in execution
  */
 function loadPopulationData($xmlUri) {
-  // Initialize array to store cumulative language distribution
-  $languageDistribution = [];
-  echo "Downloading XML file...\n";
-  $cldr_xml = file_get_contents($xmlUri);
-
-  // Throw exception if loading remote XML file fails
-  if(!$cldr_xml) {
-    throw new Exception("Cannot read XML file contents.");
-  } else {
-    echo "Loading XML String...\n";
-    $cldr_data = simplexml_load_string($cldr_xml);
-    // Throw exception if loading XML string fails
-    if(!$cldr_data) {
-      throw new UnexpectedValueException('String could not be parsed as XML');
-    }
     
-    echo "Parsing Records...\n";
+    // Initialize array to store cumulative language distribution
+    $languageDistribution = [];
+    echo "Downloading XML file...\n";
+    $cldr_xml = file_get_contents($xmlUri);
 
-    // Iterate over each territoryInfo > territory node
-    foreach($cldr_data->territoryInfo->territory as $territory) {
-      // Obtain population value
-      $population = intval($territory["population"]);
-      
-      // Iterate over each language spoken in territory to obtain distribution
-      foreach($territory->languagePopulation as $languagePopulation) {
-        $language_type = strval($languagePopulation["type"]);
+    // Throw exception if loading remote XML file fails
+    if(!$cldr_xml) {
+        throw new Exception("Cannot read XML file contents.");
+    } else {
+        echo "Loading XML String...\n";
+        $cldr_data = simplexml_load_string($cldr_xml);
         
-        // Create key if it doesn't already exist
-        if(!array_key_exists($language_type, $languageDistribution)) {
-          $languageDistribution[$language_type] = 0;
+        // Throw exception if loading XML string fails
+        if(!$cldr_data) {
+            throw new UnexpectedValueException('String could not be parsed as XML');
         }
 
-        // Calculate number of speakers per language per territory based on percent distribution
-        $percent_speakers = floatval($languagePopulation["populationPercent"]);
-        $number_of_speakers = intval(($percent_speakers * $population)/100);
-        $languageDistribution[$language_type] += $number_of_speakers;
-      }
+        echo "Parsing Records...\n";
+
+        // Iterate over each territoryInfo > territory node
+        foreach($cldr_data->territoryInfo->territory as $territory) {
+            // Obtain population value
+            $population = intval($territory["population"]);
+      
+            // Iterate over each language spoken in territory to obtain distribution
+            foreach($territory->languagePopulation as $languagePopulation) {
+                $language_type = strval($languagePopulation["type"]);
+        
+                // Create key if it doesn't already exist
+                if(!array_key_exists($language_type, $languageDistribution)) {
+                    $languageDistribution[$language_type] = 0;
+                }
+
+                // Calculate number of speakers per language per territory based on percent distribution
+                $percent_speakers = floatval($languagePopulation["populationPercent"]);
+                $number_of_speakers = intval(($percent_speakers * $population)/100);
+                $languageDistribution[$language_type] += $number_of_speakers;
+            }
+        }
+        
+        asort($languageDistribution);
+        echo "Loading table data...\n\n";
+
+        // Create table to store the data
+        $table = new Table();
+        $headers = ['Language Abbreviation', 'Language', 'Number of speakers'];
+        $table->setHeaders($headers);
+    
+        // Print language distribution as rows in table
+        foreach($languageDistribution as $lang => $census) {
+            $table->addRow([$lang, Language::getName($lang, 'en_US'), $census]);
+        }
+    
+        // Print table
+        $table->display();
     }
-    asort($languageDistribution);
-    echo "Loading table data...\n\n";
-    // Create table to store the data
-    $table = new Table();
-    $headers = ['Language Abbreviation', 'Language', 'Number of speakers'];
-    $table->setHeaders($headers);
-    // Print language distribution as rows in table
-    foreach($languageDistribution as $lang => $census) {
-      $table->addRow([$lang, Language::getName($lang, 'en_US'), $census]);
-    }
-    // Print table
-    $table->display();
-  }
 }
 
+
 try {
-  $url = "http://unicode.org/repos/cldr/trunk/common/supplemental/supplementalData.xml";
-  loadPopulationData($url);
+    $url = "http://unicode.org/repos/cldr/trunk/common/supplemental/supplementalData.xml";
+    loadPopulationData($url);
 } catch(Exception $e) {
-  echo 'An error occurred while executing the program :: ', $e->getMessage();
+    echo 'An error occurred while executing the program :: ', $e->getMessage();
 }
